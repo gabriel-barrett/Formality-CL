@@ -17,11 +17,20 @@
   (lat string term-type function)
   (ann boolean term-type term-type))
 
-(defmacro lam* (eras var body)
-  `(lam
-    ,eras
-    ,(write-to-string var)
-    (lambda (,var) ,body)))
+;;; Some utility macros
+;; (lam* eras (A B ...) body) expands to (lam eras "A" (lambda (A) (lam eras "B" (lambda (B) ...body...))))
+(defmacro lam* (eras vars body)
+  (let ((vars (reverse vars)))
+    (dolist (var vars)
+      (setf body
+            `(lam ,eras ,(write-to-string var) (lambda (,var) ,body))))
+    body))
+
+;; (app* func a b ...) expands to ...(app eras (app eras func a) b)...
+(defmacro app* (eras func arg &rest args)
+  (dolist (x (cons arg args))
+    (setf func `(app ,eras ,func ,x)))
+  func)
 
 (defmacro lat* (name expr body)
   `(lat
@@ -37,8 +46,22 @@
     ,expr
     (lambda (,self ,name) ,body)))
 
-;(defun cl->term (qcode) )
-;(defmacro cl->term-macro (qcode) )
+;; Function that transforms simple CL lambda terms to FormalityCore terms
+(defun cl->term (qcode)
+  (trivia:match qcode
+    ((cons 'lambda rest)
+     (trivia:match rest
+       ((list args body) (macroexpand `(lam* nil ,args ,(cl->term body))))
+       (_ (error "Improper lambda expression."))))
+    ((cons _ _)
+     (macroexpand `(app* nil ,@(mapcar #'cl->term qcode))))
+    (_ (cond
+         ((typep qcode 'integer) (ver qcode))
+         ((typep qcode 'symbol) qcode)
+         (t (error "Cannot be translated to FormalityCore term."))))))
+
+;; Macro version of last function (runs at compile time)
+(defmacro cl->term-macro (code) (cl->term code))
 
 (defun whnf (term defs &optional erased)
   (adt:match term-type term
