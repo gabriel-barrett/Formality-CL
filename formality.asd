@@ -1,6 +1,6 @@
 (asdf:defsystem #:formality
   :description "Formality implementation in Common Lisp"
-  :version "0.0.2"
+  :version "0.0.3"
   :author "Gabriel Barreto <gabriel.aquino.barreto@gmail.com>"
   :license "GPLv3"
   :depends-on (#:cl-algebraic-data-type #:trivia)
