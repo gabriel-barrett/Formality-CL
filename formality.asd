@@ -1,9 +1,9 @@
 (asdf:defsystem #:formality
   :description "Formality implementation in Common Lisp"
-  :version "0.0.3"
+  :version "0.0.4"
   :author "Gabriel Barreto <gabriel.aquino.barreto@gmail.com>"
   :license "GPLv3"
-  :depends-on (#:cl-algebraic-data-type #:trivia)
+  :depends-on (#:alexandria #:cl-algebraic-data-type #:trivia)
   :serial t
   :components ((:static-file "LICENSE.txt")
                (:file "formalitycore")))
