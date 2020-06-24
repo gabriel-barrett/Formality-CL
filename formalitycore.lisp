@@ -1,4 +1,4 @@
-(adt:defdata (term-type :mutable t)
+(adt:defdata term-type
   "Data type for FormalityCore terms."
   ;; var indx
   ;; ref name
@@ -111,13 +111,14 @@
                      (cl->term body names))))
         `(all* ,self ,name ,bind ,body))))
     ((cons 'all _) (error "Improper all expression."))
-    ((cons _ _)
+    ((list x '@ y) `(ann nil ,(cl->term x names) ,(cl->term y names)))
+    ((cons x _)
      (macroexpand `(app* ,@(mapcar (lambda (qcode) (cl->term qcode names)) qcode))))
     ((type integer) `(ver ,qcode))
     ('* 'typ)
-    ((or 'lambda 'let 'all 'erase) (error (format nil "~A is a keyword." qcode)))
+    ((or 'lambda 'let 'all 'erase '@) (error (format nil "~A is a keyword." qcode)))
     ((type symbol)
-     (if (gethash qcode names) qcode `(ref ,qcode)))
+     (if (gethash qcode names) qcode `(ref (quote ,qcode))))
     (_ (error "Cannot be translated to FormalityCore term."))))
 
 ;; Macro version of last function (runs at compile time)
@@ -194,3 +195,38 @@
                    (argm (norm argm defs erased seen)))
                (app eras func argm)))
             (_ head))))))
+
+(defun stringify (term)
+  (adt:match term-type term
+             ((ver indx) (format nil "#~A" indx))
+             ((ref name) (write-to-string name))
+             (typ "*")
+             ((all eras self name bind body)
+              (format nil "~A~A(~A: ~A) ~A"
+                      (if eras "∀" "Π")
+                      (if (equal self "_") "" self)
+                      name
+                      (stringify bind)
+                      (stringify (funcall body (ref self) (ref (read-from-string name))))))
+             ((lam eras name body)
+              (format nil "~A~A ~A"
+                      (if eras "Λ" "λ")
+                      name
+                      (stringify (funcall body (ref (read-from-string name))))))
+             ((app eras func argm)
+              (if eras
+                  (format nil "<~A ~A>"
+                          (stringify func)
+                          (stringify argm))
+                  (format nil "(~A ~A)"
+                          (stringify func)
+                          (stringify argm))))
+             ((lat name expr body)
+              (format nil "$ ~A = ~A; ~A"
+                      name
+                      (stringify expr)
+                      (stringify (funcall body (ref (read-from-string name))))))
+             ((ann done expr type)
+              (format nil ":~A ~A"
+                      (stringify type)
+                      (stringify expr)))))
